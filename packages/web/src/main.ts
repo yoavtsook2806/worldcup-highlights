@@ -1,6 +1,6 @@
 import "./style.css";
 import type { Game } from "./model";
-import { WORLDCUP_LIST_URL } from "./kan/config";
+import { CACHE_TTL_MS, WORLDCUP_LIST_URL } from "./kan/config";
 import {
   clearKanCache,
   fetchKanPage,
@@ -65,8 +65,17 @@ app.innerHTML = `
 
 const content = document.querySelector<HTMLDivElement>("#content")!;
 
-async function load({ fresh = false }: { fresh?: boolean } = {}): Promise<void> {
-  renderLoading(content);
+let lastLoadedAt = 0;
+let inFlight = false;
+
+async function load(
+  { fresh = false, silent = false }: { fresh?: boolean; silent?: boolean } = {},
+): Promise<void> {
+  if (inFlight) return;
+  inFlight = true;
+  // A silent refresh (e.g. on resume from background) keeps the current cards
+  // on screen until fresh data is ready, so there's no loading flash.
+  if (!silent) renderLoading(content);
   if (fresh) clearKanCache();
   try {
     // Fast path: reuse the cached, already-filtered list.
@@ -74,6 +83,7 @@ async function load({ fresh = false }: { fresh?: boolean } = {}): Promise<void> 
       const cached = readJsonCache<Game[]>(RESULTS_KEY);
       if (cached) {
         renderGames(content, cached);
+        lastLoadedAt = Date.now();
         return;
       }
     }
@@ -82,10 +92,31 @@ async function load({ fresh = false }: { fresh?: boolean } = {}): Promise<void> 
     const real = await resolveGames(games, fresh);
     writeJsonCache(RESULTS_KEY, real);
     renderGames(content, real);
+    lastLoadedAt = Date.now();
   } catch (err) {
-    renderError(content, err instanceof Error ? err.message : String(err));
+    // On a silent refresh, leave the existing cards in place rather than
+    // replacing good content with an error we couldn't recover from.
+    if (!silent) renderError(content, err instanceof Error ? err.message : String(err));
+  } finally {
+    inFlight = false;
   }
 }
 
 // Runtime scan on page load.
 void load();
+
+// Refresh when the app is brought back to the foreground (e.g. an iOS
+// Home Screen app reopened from background). iOS often resumes the frozen
+// page instead of reloading it, so without this the games list would stay
+// stale. We only refetch once the data is older than the cache TTL, so quick
+// app-switches don't trigger needless network calls.
+function refreshIfStale(): void {
+  if (document.visibilityState !== "visible") return;
+  if (Date.now() - lastLoadedAt < CACHE_TTL_MS) return;
+  void load({ silent: true });
+}
+
+document.addEventListener("visibilitychange", refreshIfStale);
+// `pageshow` covers restores from the back/forward cache, where
+// `visibilitychange` may not fire.
+window.addEventListener("pageshow", refreshIfStale);
