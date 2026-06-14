@@ -103,15 +103,24 @@ export function openHighlight(game: Game): void {
   }
   layout();
 
-  // Fallback: if Kan ever forbids framing, the iframe stays blank — open a tab.
+  // Fallback: if Kan ever forbids framing, the iframe stays blank. We can't
+  // auto-open a tab from a timer — browsers block window.open() that isn't tied
+  // to a fresh user gesture ("חלונות קופצים נחסמו"). Instead surface a link the
+  // user taps; the tap is the gesture, so the new tab opens cleanly.
   let loaded = false;
   iframe.addEventListener("load", () => {
     loaded = true;
   });
   const framingTimeout = window.setTimeout(() => {
     if (!loaded) {
-      cleanup();
-      window.open(game.url, "_blank", "noopener");
+      const link = document.createElement("a");
+      link.className = "overlay__fallback";
+      link.href = game.url;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = "פתיחת התקציר בלשונית חדשה";
+      iframe.style.display = "none";
+      clip.appendChild(link);
     }
   }, 6000);
 

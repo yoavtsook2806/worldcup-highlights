@@ -229,3 +229,19 @@ body {
 .overlay__close:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Shown only when Kan refuses framing and the iframe stays blank. The user
+   taps this to open the highlight in a new tab — a tap is a fresh user gesture,
+   so the browser does not block it as a pop-up. */
+.overlay__fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  color: #fff;
+  font-size: 1.1rem;
+  text-decoration: underline;
+}
