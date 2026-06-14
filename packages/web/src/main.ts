@@ -7,7 +7,7 @@ import {
   readJsonCache,
   writeJsonCache,
 } from "./kan/fetch";
-import { pageHasHighlight, parseGameList } from "./kan/parse";
+import { extractGameDate, pageHasHighlight, parseGameList } from "./kan/parse";
 import { renderError, renderGames, renderLoading } from "./ui/cards";
 
 const RESULTS_KEY = "games-with-highlights";
@@ -31,24 +31,25 @@ async function mapLimit<T, R>(
   return results;
 }
 
-/** Keep only games whose page has a real, published highlight. */
-async function keepGamesWithHighlights(
-  games: Game[],
-  fresh: boolean,
-): Promise<Game[]> {
-  const hasHighlight = await mapLimit(games, 8, async (game) => {
+/**
+ * Keep only games whose page has a real, published highlight, and enrich each
+ * kept game with its date (for grouping). Future/projected fixtures are dropped.
+ */
+async function resolveGames(games: Game[], fresh: boolean): Promise<Game[]> {
+  const resolved = await mapLimit(games, 8, async (game): Promise<Game | null> => {
     try {
       // Don't store the big game-page HTML — only the small result list below.
       const html = await fetchKanPage(game.url, {
         useCache: !fresh,
         store: false,
       });
-      return pageHasHighlight(html);
+      if (!pageHasHighlight(html)) return null;
+      return { ...game, date: extractGameDate(html) };
     } catch {
-      return false;
+      return null;
     }
   });
-  return games.filter((_, i) => hasHighlight[i]);
+  return resolved.filter((g): g is Game => g !== null);
 }
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -78,7 +79,7 @@ async function load({ fresh = false }: { fresh?: boolean } = {}): Promise<void> 
     }
     const html = await fetchKanPage(WORLDCUP_LIST_URL, { useCache: !fresh });
     const games = parseGameList(html);
-    const real = await keepGamesWithHighlights(games, fresh);
+    const real = await resolveGames(games, fresh);
     writeJsonCache(RESULTS_KEY, real);
     renderGames(content, real);
   } catch (err) {

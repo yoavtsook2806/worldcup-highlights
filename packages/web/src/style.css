@@ -50,7 +50,31 @@ body {
   gap: 1rem;
 }
 
+/* Gentle date divider between day groups */
+.date-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0 0.9rem;
+  color: var(--muted);
+}
+
+.date-divider::before,
+.date-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to left, transparent, #2c3a63, transparent);
+}
+
+.date-divider__label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
@@ -64,6 +88,22 @@ body {
   font: inherit;
   transition: transform 0.12s ease, border-color 0.12s ease,
     box-shadow 0.12s ease;
+}
+
+.card--seen {
+  opacity: 0.62;
+}
+
+.card__seen {
+  position: absolute;
+  top: 0.6rem;
+  inset-inline-start: 0.6rem;
+  background: var(--accent);
+  color: #04210f;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
 }
 
 .card:hover {

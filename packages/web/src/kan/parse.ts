@@ -58,3 +58,28 @@ export function pageHasHighlight(html: string): boolean {
   }
   return false;
 }
+
+/**
+ * Extract the game's date from its page, used to group highlights by day.
+ * Tries structured-data / meta dates in order of preference (kickoff first,
+ * then publish dates). Returns an ISO string, or undefined if none found.
+ */
+export function extractGameDate(html: string): string | undefined {
+  const patterns = [
+    // Kan stores the kickoff time on the game widget — this is the game's date.
+    /data-kick-off-time=["']([^"']+)["']/i,
+    /data-target=["'](\d{4}-\d{2}-\d{2}T[^"']+)["']/i,
+    // Fallbacks (structured data) in case the widget markup changes.
+    /"startDate"\s*:\s*"([^"]+)"/i,
+    /"uploadDate"\s*:\s*"([^"]+)"/i,
+    /"datePublished"\s*:\s*"([^"]+)"/i,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) {
+      const t = Date.parse(m[1]);
+      if (!Number.isNaN(t)) return new Date(t).toISOString();
+    }
+  }
+  return undefined;
+}
