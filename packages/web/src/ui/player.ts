@@ -24,7 +24,9 @@ import type { Game } from "../model";
  *
  * The user can press the player's own play button (the page auto-plays muted)
  * and its fullscreen control — both live inside the cropped region, so the
- * score is never shown.
+ * score is never shown. On desktop the player's fullscreen would otherwise
+ * fullscreen the whole (uncropped) iframe and expose the score, so we bounce
+ * out of it back to the cropped overlay — see onFullscreenChange.
  */
 
 // Calibrated on kan.org.il game pages — see project history.
@@ -37,6 +39,11 @@ const CROP = { x: 24, y: 110, w: 755, h: 416 }; // player rect at FRAME_W
 // `transform`. iPadOS reports as "Macintosh" but has touch — treat as iOS.
 const ua = navigator.userAgent;
 const isAndroid = /Android/i.test(ua);
+const isIOS =
+  /iP(hone|ad|od)/i.test(ua) ||
+  // iPadOS 13+ identifies as a Mac, but unlike a real Mac it is touch-capable.
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isDesktop = !isAndroid && !isIOS;
 const SCALE_VIA_ZOOM = isAndroid;
 
 export function openHighlight(game: Game): void {
@@ -108,10 +115,23 @@ export function openHighlight(game: Game): void {
     }
   }, 6000);
 
+  // On desktop, the player's own fullscreen button makes the cross-origin
+  // iframe ELEMENT the fullscreen element — and a fullscreened iframe fills the
+  // screen ignoring our crop, exposing the score. Bounce out of that so we fall
+  // back to the already-fullscreen, still-cropped overlay. iOS hands fullscreen
+  // to the system video player (video only, no page), so it's left untouched.
+  function onFullscreenChange(): void {
+    if (isDesktop && document.fullscreenElement === iframe) {
+      document.exitFullscreen().catch(() => {});
+      return;
+    }
+    layout();
+  }
+
   function cleanup(): void {
     window.clearTimeout(framingTimeout);
     window.removeEventListener("resize", layout);
-    document.removeEventListener("fullscreenchange", layout);
+    document.removeEventListener("fullscreenchange", onFullscreenChange);
     document.removeEventListener("keydown", onKey);
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     overlay.remove();
@@ -122,7 +142,7 @@ export function openHighlight(game: Game): void {
   }
 
   window.addEventListener("resize", layout);
-  document.addEventListener("fullscreenchange", layout);
+  document.addEventListener("fullscreenchange", onFullscreenChange);
   document.addEventListener("keydown", onKey);
   closeBtn.addEventListener("click", cleanup);
 
