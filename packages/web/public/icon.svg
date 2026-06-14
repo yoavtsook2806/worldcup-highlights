@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2546"/>
+      <stop offset="1" stop-color="#0b1020"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+
+  <!-- Soccer ball -->
+  <g>
+    <circle cx="256" cy="256" r="150" fill="#ffffff"/>
+    <circle cx="256" cy="256" r="150" fill="none" stroke="#0b1020" stroke-width="6"/>
+    <!-- central pentagon -->
+    <polygon points="256,186 322.6,234.4 297.1,312.6 214.9,312.6 189.4,234.4" fill="#0b1020"/>
+    <!-- seams from pentagon vertices to the ball edge -->
+    <g stroke="#0b1020" stroke-width="11" stroke-linecap="round">
+      <line x1="256" y1="186" x2="256" y2="106"/>
+      <line x1="322.6" y1="234.4" x2="398.7" y2="209.6"/>
+      <line x1="297.1" y1="312.6" x2="344.2" y2="377.4"/>
+      <line x1="214.9" y1="312.6" x2="167.8" y2="377.4"/>
+      <line x1="189.4" y1="234.4" x2="113.3" y2="209.6"/>
+    </g>
+  </g>
+
+  <!-- 2026 -->
+  <text x="256" y="452" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+        font-size="58" font-weight="700" fill="#ffffff" letter-spacing="4">2026</text>
+</svg>
