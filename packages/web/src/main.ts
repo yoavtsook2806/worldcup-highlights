@@ -57,14 +57,12 @@ app.innerHTML = `
   <header class="topbar">
     <h1 class="topbar__title">תקצירי גביע העולם ⚽️</h1>
     <p class="topbar__subtitle">בלי תוצאות — שתוכלו לצפות בלי לדעת איך זה נגמר</p>
-    <button id="refresh" class="topbar__refresh" type="button">↻ רענון</button>
   </header>
   <main id="content" class="content"></main>
   <footer class="footer">המקור: kan.org.il · הדף סורק את האתר בזמן אמת</footer>
 `;
 
 const content = document.querySelector<HTMLDivElement>("#content")!;
-const refreshBtn = document.querySelector<HTMLButtonElement>("#refresh")!;
 
 async function load({ fresh = false }: { fresh?: boolean } = {}): Promise<void> {
   renderLoading(content);
@@ -87,8 +85,6 @@ async function load({ fresh = false }: { fresh?: boolean } = {}): Promise<void> 
     renderError(content, err instanceof Error ? err.message : String(err));
   }
 }
-
-refreshBtn.addEventListener("click", () => void load({ fresh: true }));
 
 // Runtime scan on page load.
 void load();
