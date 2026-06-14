@@ -14,6 +14,14 @@ import type { Game } from "../model";
  * stays valid regardless of the user's actual screen size, then scale the clip
  * to fill the viewport.
  *
+ * Two scaling techniques, chosen per platform (see SCALE_VIA_ZOOM):
+ *  - `transform: scale()` on the iframe — correct everywhere EXCEPT Android
+ *    Chrome, where a transform on a cross-origin iframe mis-routes touch
+ *    coordinates so the player's controls stop responding / never auto-hide.
+ *  - CSS `zoom` on the clip — keeps touch routing correct on Android, but
+ *    renders the crop wrong on iOS Safari.
+ * So: Android gets `zoom`, iOS + desktop get `transform`.
+ *
  * The user can press the player's own play button (the page auto-plays muted)
  * and its fullscreen control — both live inside the cropped region, so the
  * score is never shown.
@@ -23,6 +31,13 @@ import type { Game } from "../model";
 const FRAME_W = 1170; // logical width we force the Kan page to render at
 const FRAME_H = 780; // tall enough to include the player (its bottom is ~526px)
 const CROP = { x: 24, y: 110, w: 755, h: 416 }; // player rect at FRAME_W
+
+// Android Chrome mis-routes touch on transformed cross-origin iframes; use
+// `zoom` there. iOS renders `zoom` crops wrong, so it (and desktop) use
+// `transform`. iPadOS reports as "Macintosh" but has touch — treat as iOS.
+const ua = navigator.userAgent;
+const isAndroid = /Android/i.test(ua);
+const SCALE_VIA_ZOOM = isAndroid;
 
 export function openHighlight(game: Game): void {
   const overlay = document.createElement("div");
@@ -47,6 +62,17 @@ export function openHighlight(game: Game): void {
   overlay.appendChild(closeBtn);
   overlay.appendChild(clip);
 
+  // The iframe always renders the Kan page at FRAME_W (desktop layout) so the
+  // calibrated crop stays valid; only the scaling technique differs.
+  iframe.style.width = `${FRAME_W}px`;
+  iframe.style.height = `${FRAME_H}px`;
+  if (SCALE_VIA_ZOOM) {
+    // Android: position the iframe so the player rect is at the clip's
+    // top-left, size the clip to the rect, then `zoom` the clip to fit.
+    iframe.style.left = `${-CROP.x}px`;
+    iframe.style.top = `${-CROP.y}px`;
+  }
+
   const aspect = CROP.w / CROP.h;
   function layout(): void {
     const maxW = window.innerWidth * 0.96;
@@ -58,11 +84,15 @@ export function openHighlight(game: Game): void {
       w = h * aspect;
     }
     const scale = w / CROP.w;
-    clip.style.width = `${w}px`;
-    clip.style.height = `${h}px`;
-    iframe.style.width = `${FRAME_W}px`;
-    iframe.style.height = `${FRAME_H}px`;
-    iframe.style.transform = `scale(${scale}) translate(${-CROP.x}px, ${-CROP.y}px)`;
+    if (SCALE_VIA_ZOOM) {
+      clip.style.width = `${CROP.w}px`;
+      clip.style.height = `${CROP.h}px`;
+      clip.style.setProperty("zoom", String(scale));
+    } else {
+      clip.style.width = `${w}px`;
+      clip.style.height = `${h}px`;
+      iframe.style.transform = `scale(${scale}) translate(${-CROP.x}px, ${-CROP.y}px)`;
+    }
   }
   layout();
 
