@@ -12,13 +12,7 @@ import type { Game } from "../model";
  * The crop geometry is calibrated against Kan's desktop layout rendered at a
  * fixed iframe width (FRAME_W). We force that width so the measured rectangle
  * stays valid regardless of the user's actual screen size, then scale the clip
- * to fill the viewport using CSS `zoom`.
- *
- * Why `zoom` and not `transform: scale()`: a CSS transform on a cross-origin
- * iframe makes Android Chrome mis-route touch coordinates into the frame, so
- * the player's controls don't receive activity events (taps miss, the progress
- * bar never auto-hides). `zoom` is layout/hit-test correct AND keeps the inner
- * page at FRAME_W (desktop layout), so the calibrated crop still lines up.
+ * to fill the viewport.
  *
  * The user can press the player's own play button (the page auto-plays muted)
  * and its fullscreen control — both live inside the cropped region, so the
@@ -53,17 +47,6 @@ export function openHighlight(game: Game): void {
   overlay.appendChild(closeBtn);
   overlay.appendChild(clip);
 
-  // The iframe is positioned (unzoomed) so the player rect sits at the clip's
-  // top-left; the clip is sized to the player rect and then `zoom`ed to fill
-  // the viewport. Zooming the clip (not transforming the iframe) keeps touch
-  // routing correct on mobile.
-  iframe.style.width = `${FRAME_W}px`;
-  iframe.style.height = `${FRAME_H}px`;
-  iframe.style.left = `${-CROP.x}px`;
-  iframe.style.top = `${-CROP.y}px`;
-  clip.style.width = `${CROP.w}px`;
-  clip.style.height = `${CROP.h}px`;
-
   const aspect = CROP.w / CROP.h;
   function layout(): void {
     const maxW = window.innerWidth * 0.96;
@@ -74,7 +57,12 @@ export function openHighlight(game: Game): void {
       h = maxH;
       w = h * aspect;
     }
-    clip.style.setProperty("zoom", String(w / CROP.w));
+    const scale = w / CROP.w;
+    clip.style.width = `${w}px`;
+    clip.style.height = `${h}px`;
+    iframe.style.width = `${FRAME_W}px`;
+    iframe.style.height = `${FRAME_H}px`;
+    iframe.style.transform = `scale(${scale}) translate(${-CROP.x}px, ${-CROP.y}px)`;
   }
   layout();
 
