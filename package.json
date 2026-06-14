@@ -1,0 +1,14 @@
+{
+  "name": "worldcup-highlights",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "yarn@4.12.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "yarn workspace @worldcup/web dev",
+    "build": "yarn workspace @worldcup/web build",
+    "preview": "yarn workspace @worldcup/web preview"
+  }
+}
