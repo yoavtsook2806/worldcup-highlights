@@ -5,7 +5,10 @@ import { openHighlight } from "./player";
 
 const SEEN_LABEL = "✓ נצפה";
 
-// Date helpers — bucket and label games by their day (Israel time).
+// Date helpers — bucket and label games by their "broadcast day" in Israel time.
+// Kickoffs before this hour count as the previous day, matching how viewers
+// think of them: 01:00/02:00 games belong to the night before, 03:00+ are new.
+const DAY_CUTOFF_HOURS = 3;
 const dayKeyFmt = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Jerusalem",
 });
@@ -16,6 +19,11 @@ const dayTitleFmt = new Intl.DateTimeFormat("he-IL", {
   timeZone: "Asia/Jerusalem",
 });
 
+/** The kickoff shifted back by the cutoff, so overnight games roll to the prior day. */
+function broadcastDay(iso: string): Date {
+  return new Date(new Date(iso).getTime() - DAY_CUTOFF_HOURS * 3600_000);
+}
+
 interface DateGroup {
   key: string;
   title: string;
@@ -25,7 +33,7 @@ interface DateGroup {
 function groupByDate(games: Game[]): DateGroup[] {
   const map = new Map<string, Game[]>();
   for (const g of games) {
-    const key = g.date ? dayKeyFmt.format(new Date(g.date)) : "unknown";
+    const key = g.date ? dayKeyFmt.format(broadcastDay(g.date)) : "unknown";
     const bucket = map.get(key);
     if (bucket) bucket.push(g);
     else map.set(key, [g]);
@@ -35,7 +43,7 @@ function groupByDate(games: Game[]): DateGroup[] {
     title:
       key === "unknown"
         ? "תאריך לא ידוע"
-        : dayTitleFmt.format(new Date(list[0].date!)),
+        : dayTitleFmt.format(broadcastDay(list[0].date!)),
     games: list,
   }));
   // Most recent day first; undated bucket last.
