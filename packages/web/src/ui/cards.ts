@@ -38,14 +38,22 @@ function groupByDate(games: Game[]): DateGroup[] {
     if (bucket) bucket.push(g);
     else map.set(key, [g]);
   }
-  const groups: DateGroup[] = [...map.entries()].map(([key, list]) => ({
-    key,
-    title:
-      key === "unknown"
-        ? "תאריך לא ידוע"
-        : dayTitleFmt.format(broadcastDay(list[0].date!)),
-    games: list,
-  }));
+  const groups: DateGroup[] = [...map.entries()].map(([key, list]) => {
+    // Within a day, show the most recent kickoff first; undated games last.
+    list.sort((a, b) => {
+      const ta = a.date ? new Date(a.date).getTime() : -Infinity;
+      const tb = b.date ? new Date(b.date).getTime() : -Infinity;
+      return tb - ta;
+    });
+    return {
+      key,
+      title:
+        key === "unknown"
+          ? "תאריך לא ידוע"
+          : dayTitleFmt.format(broadcastDay(list[0].date!)),
+      games: list,
+    };
+  });
   // Most recent day first; undated bucket last.
   groups.sort((a, b) => {
     if (a.key === "unknown") return 1;
