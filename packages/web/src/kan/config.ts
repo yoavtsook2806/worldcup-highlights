@@ -2,8 +2,15 @@
 
 export const KAN_ORIGIN = "https://www.kan.org.il";
 
-/** The World Cup games page we scan for available highlights. */
-export const WORLDCUP_LIST_URL = `${KAN_ORIGIN}/content/worldcup/games/`;
+/**
+ * The World Cup VOD page we scan for available highlights.
+ *
+ * This is Kan's canonical, continuously-updated highlights listing. Each
+ * published highlight appears as a card linking to its `/s1/<id>/` section with
+ * the two teams in the card's aria-label — see parse.ts. (The older
+ * `/content/worldcup/games/` index is no longer kept up to date.)
+ */
+export const WORLDCUP_LIST_URL = `${KAN_ORIGIN}/wc/wc-vod/`;
 
 /**
  * Best-effort CORS proxies, tried in order if a direct browser fetch fails.

@@ -42,6 +42,7 @@ const TEAMS: Record<string, { name: string; flag: string }> = {
   wal: { name: "ויילס", flag: "🏴󠁧󠁢󠁷󠁬󠁳󠁿" },
   ecu: { name: "אקוודור", flag: "🇪🇨" },
   iri: { name: "איראן", flag: "🇮🇷" },
+  irn: { name: "איראן", flag: "🇮🇷" },
   ksa: { name: "ערב הסעודית", flag: "🇸🇦" },
   tun: { name: "תוניסיה", flag: "🇹🇳" },
   crc: { name: "קוסטה ריקה", flag: "🇨🇷" },
@@ -163,4 +164,76 @@ export function teamsFromSlug(slug: string): [string, string] | null {
   const parts = slug.toLowerCase().split("vs");
   if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
   return [parts[0], parts[1]];
+}
+
+/**
+ * Map a Kan Hebrew team name (as it appears in a VOD card's aria-label) to its
+ * FIFA-ish code, so we can show the right flag/canonical name. These are Kan's
+ * own spellings — they don't always match the display names in `TEAMS` (e.g.
+ * Kan writes "ארצות הברית" where TEAMS has "ארה״ב", and uses a plain apostrophe
+ * in "אלג'יריה"/"צ'כיה"). Knockout slugs like `game73` carry no codes, so this
+ * is the only way to resolve their teams. Several names map to one code where
+ * Kan uses more than one spelling.
+ */
+const NAME_TO_CODE: Record<string, string> = {
+  "אלג'יריה": "alg",
+  "ארגנטינה": "arg",
+  "אוסטרליה": "aus",
+  "אוסטריה": "aut",
+  "בלגיה": "bel",
+  "בוסניה והרצגובינה": "bih",
+  "בוסניה": "bih",
+  "ברזיל": "bra",
+  "קנדה": "can",
+  "חוף השנהב": "civ",
+  "קונגו": "cod",
+  "קונגו DR": "cod",
+  "קולומביה": "col",
+  "כף ורדה": "cpv",
+  "קרואטיה": "cro",
+  "קוראסאו": "cur",
+  "קורסאו": "cur",
+  "צ'כיה": "cze",
+  "אקוודור": "ecu",
+  "מצרים": "egy",
+  "אנגליה": "eng",
+  "ספרד": "esp",
+  "צרפת": "fra",
+  "גרמניה": "ger",
+  "גאנה": "gha",
+  "האיטי": "hai",
+  "איראן": "irn",
+  "עיראק": "irq",
+  "ירדן": "jor",
+  "יפן": "jpn",
+  "קוריאה הדרומית": "kor",
+  "דרום קוריאה": "kor",
+  "ערב הסעודית": "ksa",
+  "מרוקו": "mar",
+  "מקסיקו": "mex",
+  "הולנד": "ned",
+  "נורווגיה": "nor",
+  "ניו זילנד": "nzl",
+  "פנמה": "pan",
+  "פרגוואי": "par",
+  "פורטוגל": "por",
+  "קטאר": "qat",
+  "דרום אפריקה": "rsa",
+  "סקוטלנד": "sco",
+  "סנגל": "sen",
+  "שווייץ": "sui",
+  "שוודיה": "swe",
+  "תוניסיה": "tun",
+  "טורקיה": "tur",
+  "אורוגוואי": "uru",
+  "ארצות הברית": "usa",
+  "אוזבקיסטן": "uzb",
+};
+
+/**
+ * Resolve a Hebrew team name to its code. Returns null if we don't recognise
+ * the name, so callers can fall back to showing the raw name.
+ */
+export function codeFromName(name: string): string | null {
+  return NAME_TO_CODE[name.trim()] ?? null;
 }

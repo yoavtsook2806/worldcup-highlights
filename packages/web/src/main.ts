@@ -7,7 +7,7 @@ import {
   readJsonCache,
   writeJsonCache,
 } from "./kan/fetch";
-import { extractGameDate, pageHasHighlight, parseGameList } from "./kan/parse";
+import { extractGameDate, parseGameList } from "./kan/parse";
 import { renderError, renderGames, renderLoading } from "./ui/cards";
 
 const RESULTS_KEY = "games-with-highlights";
@@ -32,24 +32,24 @@ async function mapLimit<T, R>(
 }
 
 /**
- * Keep only games whose page has a real, published highlight, and enrich each
- * kept game with its date (for grouping). Future/projected fixtures are dropped.
+ * Enrich each game with its date (used to group highlights by day). The VOD
+ * list is already filtered to real, published highlights, so we never drop a
+ * game here: if its page can't be read, we just keep it without a date (it
+ * lands in the "unknown date" bucket rather than disappearing).
  */
 async function resolveGames(games: Game[], fresh: boolean): Promise<Game[]> {
-  const resolved = await mapLimit(games, 8, async (game): Promise<Game | null> => {
+  return mapLimit(games, 8, async (game): Promise<Game> => {
     try {
       // Don't store the big game-page HTML — only the small result list below.
       const html = await fetchKanPage(game.url, {
         useCache: !fresh,
         store: false,
       });
-      if (!pageHasHighlight(html)) return null;
       return { ...game, date: extractGameDate(html) };
     } catch {
-      return null;
+      return game;
     }
   });
-  return resolved.filter((g): g is Game => g !== null);
 }
 
 const app = document.querySelector<HTMLDivElement>("#app")!;

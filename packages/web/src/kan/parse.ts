@@ -1,62 +1,78 @@
 import type { Game } from "../model";
 import { KAN_ORIGIN } from "./config";
-import { teamsFromSlug } from "./slug";
+import { codeFromName } from "./slug";
 
 /**
- * Matches a Kan World Cup game link in the listing page source, e.g.
- *   https://www.kan.org.il/content/worldcup/games/ausvstur/
- *                                                  ^^^^^^^^ slug
+ * Matches a highlight card in the /wc/wc-vod/ listing, e.g.
  *
- * The listing links to the slug-only page (no /s1/<id>/ — those numeric ids
- * live on the per-game page). We scan the RAW HTML text rather than the DOM,
- * because Kan builds the actual <a> elements client-side; the links are present
- * in the served HTML as absolute URLs, which is what we match here.
+ *   <a class="news-card unstyled-link"
+ *      href="https://www.kan.org.il/content/worldcup/games/game75/s1/1067489/"
+ *      aria-label="תקציר | הולנד - מרוקו">
+ *
+ * Every published highlight is a card linking to its `/s1/<id>/` section, with
+ * the two teams in the aria-label. We match ONLY these cards: group/bracket
+ * navigation cards link to the bare `/games/<slug>/` page (no `/s1/`) and are
+ * skipped — so the result is already spoiler-free (names only, no score) and
+ * pre-filtered to games that actually happened.
+ *
+ * `[^>]` matches newlines, so this tolerates the attributes being split across
+ * lines as Kan serves them.
  */
-const GAME_URL_RE =
-  /\/content\/worldcup\/games\/([a-z0-9]{2,5}vs[a-z0-9]{2,5})\//gi;
+const HIGHLIGHT_CARD_RE =
+  /<a\b[^>]*class="news-card[^"]*"[^>]*href="[^"]*\/content\/worldcup\/games\/([a-z0-9]+)\/s1\/(\d+)\/"[^>]*aria-label="([^"]*)"/gi;
+
+/** Decode HTML entities (e.g. `&#x27;` -> `'`) using the DOM. */
+function decodeEntities(s: string): string {
+  const el = document.createElement("textarea");
+  el.innerHTML = s;
+  return el.value;
+}
 
 /**
- * Parse the World Cup list page HTML into a spoiler-free list of games.
- *
- * We rely ONLY on the game slug and derive team names from it. We never read
- * on-page text/thumbnails, because those tend to carry the score — and a leaked
- * score would defeat the purpose.
+ * Pull the two teams out of a highlight card's aria-label, which looks like
+ * "תקציר | הולנד - מרוקו" or "תקציר | האיטי נגד סקוטלנד" (separator is either
+ * " - " or " נגד "). Each name is mapped to its FIFA code so we can show the
+ * flag/canonical name; an unrecognised name is kept as-is so it still displays.
+ */
+function teamsFromLabel(label: string): [string, string] | null {
+  const decoded = decodeEntities(label);
+  const body = decoded.includes("|")
+    ? decoded.slice(decoded.indexOf("|") + 1)
+    : decoded;
+  const parts = body
+    .split(/ נגד | - /)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length !== 2) return null;
+  return [codeFromName(parts[0]) ?? parts[0], codeFromName(parts[1]) ?? parts[1]];
+}
+
+/**
+ * Parse the VOD page HTML into a spoiler-free list of games. We read team names
+ * only from the aria-label — never on-page text/thumbnails, which carry the
+ * score — and a leaked score would defeat the purpose.
  */
 export function parseGameList(html: string): Game[] {
   const bySlug = new Map<string, Game>();
 
-  for (const m of html.matchAll(GAME_URL_RE)) {
+  for (const m of html.matchAll(HIGHLIGHT_CARD_RE)) {
     const slug = m[1].toLowerCase();
     if (bySlug.has(slug)) continue;
 
-    const teams = teamsFromSlug(slug);
+    const teams = teamsFromLabel(m[3]);
     if (!teams) continue;
 
     bySlug.set(slug, {
       id: slug,
       slug,
+      // The bare game page is what the player embeds + crops (see player.ts);
+      // its crop is calibrated against this layout, not the /s1/ page.
       url: `${KAN_ORIGIN}/content/worldcup/games/${slug}/`,
       teams,
     });
   }
 
   return Array.from(bySlug.values());
-}
-
-/**
- * Does a game page actually have a published highlight (i.e. the game really
- * happened), as opposed to a future/projected fixture that only has a page?
- *
- * A real highlight page references the VOD stream via Kan's Redge player
- * (`type=MOVIE`) and links to its `/s1/<id>` highlight section. Future fixtures
- * have neither.
- */
-export function pageHasHighlight(html: string): boolean {
-  if (/[?&]type=MOVIE\b/i.test(html)) return true;
-  if (/\/content\/worldcup\/games\/[a-z0-9]+vs[a-z0-9]+\/s\d+\/\d+/i.test(html)) {
-    return true;
-  }
-  return false;
 }
 
 /**
